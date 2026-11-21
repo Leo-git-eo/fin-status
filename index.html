@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>レオのいま</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --text:#2b2f36; --sub:#6e7587; --line:#e3e7ee;
+    --ok:#2fa84f; --tour:#e8a13a; --sleep:#5a6bc7; --flight:#8a93a5; --sos:#e5484d;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    padding:24px 16px 40px;}
+  .wrap{max-width:480px; margin:0 auto;}
+  h1{font-size:15px; font-weight:600; color:var(--sub); text-align:center; margin:8px 0 16px; letter-spacing:.08em;}
+  .status-card{background:var(--card); border-radius:24px; padding:36px 20px 30px; text-align:center;
+    box-shadow:0 6px 24px rgba(90,105,140,.10);}
+  .dot{width:26px; height:26px; border-radius:50%; margin:0 auto 16px; background:var(--ok);}
+  .status{font-size:32px; font-weight:700; line-height:1.3; margin:0 0 8px;}
+  .status-sub{font-size:16px; color:var(--sub); margin:0;}
+  .updated{margin-top:20px; font-size:13px; color:var(--sub);}
+  .clocks{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;}
+  .clock{background:var(--card); border-radius:20px; padding:18px 10px 14px; text-align:center;
+    box-shadow:0 6px 24px rgba(90,105,140,.08);}
+  .clock .city{font-size:13px; color:var(--sub); letter-spacing:.06em; margin-bottom:6px;}
+  .clock .time{font-size:30px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.1;}
+  .clock .date{font-size:12px; color:var(--sub); margin-top:4px;}
+  .diff{text-align:center; font-size:13px; color:var(--sub); margin-top:12px;}
+  .note{margin-top:28px; text-align:center; font-size:13px; color:var(--sub); line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>レオのいま</h1>
+
+  <div class="status-card">
+    <div class="dot" id="dot"></div>
+    <p class="status" id="status">読み込み中…</p>
+    <p class="status-sub" id="statusSub"></p>
+    <p class="updated" id="updated"></p>
+  </div>
+
+  <div class="clocks">
+    <div class="clock">
+      <div class="city">フィンランド</div>
+      <div class="time" id="timeFin">--:--</div>
+      <div class="date" id="dateFin"></div>
+    </div>
+    <div class="clock">
+      <div class="city">東京</div>
+      <div class="time" id="timeJpn">--:--</div>
+      <div class="date" id="dateJpn"></div>
+    </div>
+  </div>
+  <p class="diff">時差は7時間（日本が7時間進んでいます）</p>
+
+  <p class="note">返信がなくても、ここが更新されていれば大丈夫。<br>緊急のときは電話してね。</p>
+</div>
+
+<script>
+  const STATUSES = {
+    ok:     { color: "var(--ok)",     label: "大丈夫だよ",           sub: "返信できるよ" },
+    tour:   { color: "var(--tour)",   label: "ツアー・外出中",       sub: "返信が遅れるかも" },
+    sleep:  { color: "var(--sleep)",  label: "寝てます",             sub: "起きたら連絡するね" },
+    flight: { color: "var(--flight)", label: "飛行機の中",          sub: "着陸したら連絡するね" },
+    sos:    { color: "var(--sos)",    label: "緊急",                 sub: "電話してほしい" }
+  };
+
+  function renderStatus(data){
+    const s = STATUSES[data.status] || STATUSES.ok;
+    document.getElementById("dot").style.background = s.color;
+    document.getElementById("status").textContent = s.label;
+    document.getElementById("statusSub").textContent = s.sub;
+    if (data.updatedAt){
+      const d = new Date(data.updatedAt);
+      const fmt = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo", month: "numeric", day: "numeric",
+        hour: "numeric", minute: "2-digit"
+      });
+      document.getElementById("updated").textContent = fmt.format(d) + "（日本時間）に更新";
+    }
+  }
+
+  function loadStatus(){
+    fetch("status.json?t=" + Date.now(), { cache: "no-store" })
+      .then(r => r.json())
+      .then(renderStatus)
+      .catch(() => {
+        document.getElementById("status").textContent = "読み込めなかった";
+        document.getElementById("statusSub").textContent = "少し待って開き直してね";
+      });
+  }
+
+  function tickClocks(){
+    const now = new Date();
+    const tf = new Intl.DateTimeFormat("ja-JP", { timeZone: "Europe/Helsinki", hour: "numeric", minute: "2-digit" });
+    const df = new Intl.DateTimeFormat("ja-JP", { timeZone: "Europe/Helsinki", month: "numeric", day: "numeric", weekday: "short" });
+    const tj = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "numeric", minute: "2-digit" });
+    const dj = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", weekday: "short" });
+    document.getElementById("timeFin").textContent = tf.format(now);
+    document.getElementById("dateFin").textContent = df.format(now);
+    document.getElementById("timeJpn").textContent = tj.format(now);
+    document.getElementById("dateJpn").textContent = dj.format(now);
+  }
+
+  loadStatus();
+  tickClocks();
+  setInterval(loadStatus, 30000);
+  setInterval(tickClocks, 10000);
+</script>
+</body>
+</html>
